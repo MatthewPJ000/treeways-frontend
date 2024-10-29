@@ -1,0 +1,123 @@
+"use client"
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+
+interface InputField {
+  id: number;
+  content: string;
+}
+
+interface BoxProps {
+  removeBox: (id: string) => void;
+  collectionName: string; // Hierarchical collection name passed as prop
+}
+
+export default function App() {
+  const [boxComponents, setBoxComponents] = useState<string[]>([]);
+
+  // Function to add a main-level box with its own hierarchy name (e.g., '1', '2', etc.)
+  const addComponentNumberX = () => {
+    const newBoxName = `${boxComponents.length + 1}`; // Set the first box as '1', second as '2', etc.
+    setBoxComponents((prev) => [...prev, newBoxName]);
+  };
+
+  // Function to remove a Box component by its collectionName (hierarchy)
+  const removeComponentNumberX = (collectionName: string) => {
+    setBoxComponents((prev) => prev.filter((boxName) => boxName !== collectionName));
+  };
+
+  return (
+    <div className="flex flex-col items-center p-8 min-h-screen">
+      <div className="flex flex-row items-start space-x-8">
+        {boxComponents.map((collectionName) => (
+          <div key={collectionName} className="flex flex-col items-center">
+            <Box
+              removeBox={removeComponentNumberX}
+              collectionName={collectionName}
+            />
+          </div>
+        ))}
+      </div>
+
+      <div className="block my-4">
+        <button
+          type="button"
+          onClick={addComponentNumberX}
+          className="flex w-full justify-center rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold leading-6 text-white shadow-lg hover:bg-blue-500 transition duration-200"
+        >
+          Add Main Box
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Box({ removeBox, collectionName }: BoxProps) {
+  const [inputs, setInputs] = useState<InputField[]>([]);
+  const [childBoxes, setChildBoxes] = useState<string[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await axios.get(`/api/box/${collectionName}`);
+        const boxData = response.data.inputs; // Assuming 'inputs' is part of the response data
+        setInputs(boxData);
+      } catch (error) {
+        console.error('Error fetching box data:', error);
+      }
+    };
+    fetchData();
+  }, [collectionName]);
+
+  // Function to add a new child component with hierarchical naming (e.g., '1>1', '1>2', etc.)
+  const addComponent = () => {
+    const newChildNumber = `${collectionName}>${childBoxes.length + 1}`; // Append new child number
+    setChildBoxes((prev) => [...prev, newChildNumber]);
+  };
+
+  return (
+    <div className="flex flex-col items-center space-y-4">
+      <div className="relative flex flex-col items-center p-4 w-60 h-auto border rounded-lg bg-white shadow-lg hover:shadow-xl transition-shadow duration-200">
+        <h2 className="text-xl font-bold text-gray-800">{collectionName}</h2>
+
+        {/* Render inputs */}
+        {inputs.map((input) => (
+          <div key={input.id} className="relative mt-2 rounded-md">
+            <span
+              id={`input-${input.id}`}
+              className="block w-full rounded-md py-2 px-3 text-gray-900 bg-gray-200 ring-1 ring-gray-300 sm:text-sm sm:leading-6"
+            >
+              {input.content || 'No Content'}
+            </span>
+          </div>
+        ))}
+
+        <div className="mt-4 flex space-x-2">
+          <button
+            type="button"
+            onClick={addComponent}
+            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 transition duration-200"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={() => removeBox(collectionName)}
+            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition duration-200"
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+
+      {/* Render child boxes horizontally below parent */}
+      {childBoxes.length > 0 && (
+        <div className="flex flex-row space-x-4 mt-4">
+          {childBoxes.map((childName) => (
+            <Box key={childName} removeBox={removeBox} collectionName={childName} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
